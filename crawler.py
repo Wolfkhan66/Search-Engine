@@ -1,23 +1,29 @@
 from bs4 import BeautifulSoup
 import urllib2
+import re
 
 def CrawlNext(nexturl):
-    url = urllib2.urlopen(nexturl).read()
-    soup = BeautifulSoup(url, "html.parser")
+    try:
+        url = urllib2.urlopen(nexturl).read()
+        soup = BeautifulSoup(url, "html.parser")
+        print(" crawling", nexturl)
+        for link in soup.findAll('a', attrs={'href': re.compile("^https://www.")}):
+            href = link.get('href')
+            if href not in waiting and href not in crawled:
+                #if link.get('href').startswith('https://www.'):
+                waiting.append(href)
+                #print(" adding", href, "to waiting list")
 
-    for link in soup.findAll('a'):
-        if link.get('href') not in waiting:
-            #if link.get('href').startswith('https://www.'):
-            waiting.append(link.get('href'))
-
-    crawled.add(url)
-    urltext.add(soup.get_text)
-    waiting.remove(nexturl)
+        crawled.add(url)
+        urltext.add(soup.get_text)
+        waiting.remove(nexturl)
+    except:
+        print("error with url",  nexturl)
+        erroredurls.append(href)
 
 
-
-    
 waiting = []
+erroredurls = []
 crawled = set()
 urltext = set()
 
