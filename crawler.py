@@ -15,10 +15,10 @@ def crawl_next(next_url):
                 waiting.append(href)
         crawled.append(url)
         waiting.remove(next_url)
+        index_data(next_url, soup)
     except:
         # print("error with url",  next_url)
         waiting.remove(next_url)
-    index_data(next_url, soup)
 
 
 def index_data(url , soup):
@@ -30,15 +30,16 @@ def index_data(url , soup):
         for i in stuff.split():
             i.strip(string.punctuation + string.digits + string.whitespace)
             if i not in stop_list and i not in url_dict and len(i) > 3:
-                search_term = i
+                search_term = str(i)
+                search_term.strip(string.punctuation)
 
                 results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
                 print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
-
-                url_dict.update({search_term : len(results)})
-                dict.update({url : url_dict})
-                index_list.append(dict)
-                print(dict)
+                if len(results) >= 10:
+                    url_dict.update({search_term : len(results)})
+                    dict.update({url : url_dict})
+                    index_list.append(dict)
+                    print(dict)
     except:
         print ("error")
 
