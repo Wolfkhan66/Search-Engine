@@ -11,6 +11,7 @@ con = lite.connect('indexed_urls.db')
 with con:
     cur = con.cursor()
     cur.execute('SELECT SQLITE_VERSION()')
+    #cur.execute("DROP TABLE IF EXISTS URLs")
     data = cur.fetchone()
     print "SQLite version: %s" % data
 
@@ -62,10 +63,10 @@ def index_data(url , soup):
 
                         cur = con.cursor()
 
-                        cur.execute("DROP TABLE IF EXISTS URLs")
-                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INT, Url TEXT, Words TEXT, WordCount INT);")
-                        cur.execute("INSERT INTO URLs VALUES (?, ?, ?, ?);", (len(crawled), url, search_term, len(results)))
-                        cur.execute("SELECT * FROM URLs")
+
+                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Words TEXT, WordCount INT);")
+                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?);",(len(crawled), url, search_term, len(results)))
+                        cur.execute("SELECT * FROM URLs ORDER BY Id DESC LIMIT 1")
                         print(cur.fetchall())
 
                         con.commit()
@@ -108,8 +109,9 @@ else:
 
 waiting.append(seed)
 
-while len(waiting) > 0 and len(crawled) < max_crawl_length:
+while len(waiting) > 0 and max_crawl_length > 0:
     crawl_next(waiting[0])
+    max_crawl_length -= 1
 
 
 with open('Waiting_list.txt', 'wb') as f:
