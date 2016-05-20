@@ -129,30 +129,57 @@ def query_database(search_term):
 initialize the Graphical User Interface
 '''
 def init_gui():
-    root = Tk()
-    root.title("Simple Search Engine")
-    root.geometry("640x480")
+    search_engine = Tk()
+    search_engine.title("Simple Search Engine")
+    search_engine.geometry("640x480")
 
-    app = Frame(root)
+    app = Frame(search_engine)
     app.grid()
-    button1 = Button(app, text="button 1")
-    button1.grid()
 
-    label = Label(app, text=" label 1!!!")
+    label = Label(app, text="Enter Max Pages to Crawl and Index")
+    label.pack()
     label.grid()
-    root.mainloop()
+
+    index_length = Entry(app)
+    index_length.insert(END, '0')
+    index_length.pack()
+    index_length.grid()
+
+    crawl_button = Button(app, text="Start Crawl", command=lambda: start_crawl(index_length.get()))
+    crawl_button.pack()
+    crawl_button.grid()
+
+    label2 = Label(app, text="Enter a Search Term to Query the Database")
+    label2.pack()
+    label2.grid()
+
+    search_term = Entry(app)
+    search_term.insert(END, 'Hello')
+    search_term.pack()
+    search_term.grid()
+
+    search_button = Button(app, text="Search", command=lambda: start_query(search_term.get()))
+    search_button.pack()
+    search_button.grid()
+
+    search_engine.mainloop()
+
+def start_query(search_term):
+    query_database(search_term)
+
+def start_crawl(crawl_length):
+    count = int(crawl_length)
+    while len(waiting) > 0 and count > 0:
+        crawl_next(waiting[0])
+        count -= 1
 
 
 '''
 The start of the program
 '''
-seed = 'https://www.google.com'
-search_term = 'age'
-max_crawl_length = 5
-
-
 '''
 Load stop list , crawling and waiting list from file
+Launch the Gui
 '''
 with open('Stop_Words.txt', 'r') as f:
     stop_list = f.readlines()
@@ -166,14 +193,4 @@ if len(waiting) > 1:
 else:
     crawled = []
 
-
 init_gui()
-
-#waiting.append(seed)
-
-while len(waiting) > 0 and max_crawl_length > 0:
-    crawl_next(waiting[0])
-    max_crawl_length -= 1
-
-save_crawl_lists(crawled,waiting)
-query_database('Google')
