@@ -93,14 +93,25 @@ def save_crawl_lists(crawled, waiting):
 query the database for a term
 '''
 def query_database(search_term):
+
+    print("###############################")
+    print("###############################")
+    print("Querying Database for the word ", search_term)
+    print("The top 5 urls for this word are: ")
+    print("")
+
     try:
         con = lite.connect('indexed_urls.db')
         cur = con.cursor()
-        cur.execute("SELECT Url, Words, WordCount FROM URLs ORDER BY WordCount DESC LIMIT 5")
+        cur.execute("SELECT Url, Words, WordCount FROM URLs WHERE Words=? ORDER BY WordCount DESC LIMIT 5;",(search_term,))
         #print(cur.fetchall())
         output = cur.fetchall()
         for lines in output:
             print lines
+
+        print("")
+        print("###############################")
+        print("###############################")
 
     except lite.Error, e:
         if con:
@@ -165,4 +176,4 @@ while len(waiting) > 0 and max_crawl_length > 0:
     max_crawl_length -= 1
 
 save_crawl_lists(crawled,waiting)
-query_database('hello')
+query_database('Google')
