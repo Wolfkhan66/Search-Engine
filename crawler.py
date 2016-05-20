@@ -7,27 +7,6 @@ import sys
 import pickle
 from Tkinter import *
 
-root = Tk()
-root.title("Simple Search Engine")
-root.geometry("640x480")
-
-app = Frame(root)
-app.grid()
-button1 = Button(app, text = "button 1")
-button1.grid()
-
-label = Label(app, text = " label 1!!!")
-label.grid()
-root.mainloop()
-
-con = lite.connect('indexed_urls.db')
-
-with con:
-    cur = con.cursor()
-    cur.execute('SELECT SQLITE_VERSION()')
-    #cur.execute("DROP TABLE IF EXISTS URLs")
-    data = cur.fetchone()
-    print "SQLite version: %s" % data
 
 '''
 Pass in a url
@@ -52,9 +31,13 @@ def crawl_next(next_url):
         waiting.remove(next_url)
 
 
+'''
+Pass in a url and soup object
+find and count word occurence in soup object
+save information to a database
+'''
 def index_data(url , soup):
     url_dict = {}
-    dict = {}
     stuff = soup.get_text()
 
     try:
@@ -68,15 +51,10 @@ def index_data(url , soup):
                 print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
                 if len(results) >= 1:
                     url_dict.update({search_term : len(results)})
-                    dict.update({url : url_dict})
-                    index_list.append(dict)
-                    #print(dict)
 
                     try:
                         con = lite.connect('indexed_urls.db')
-
                         cur = con.cursor()
-
 
                         cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Words TEXT, WordCount INT);")
                         cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?);",(len(crawled), url, search_term, len(results)))
@@ -84,7 +62,6 @@ def index_data(url , soup):
                         print(cur.fetchall())
 
                         con.commit()
-
                     except lite.Error, e:
 
                         if con:
@@ -101,16 +78,73 @@ def index_data(url , soup):
         print ("error")
 
 
-index_list = []
+'''
+save the waiting and crawled list to file
+'''
+def save_crawl_lists(crawled, waiting):
+    with open('Waiting_list.txt', 'wb') as f:
+        pickle.dump(waiting, f)
 
+    with open('Crawled_list.txt', 'wb') as f:
+        pickle.dump(crawled, f)
+
+
+'''
+query the database for a term
+'''
+def query_database(search_term):
+    try:
+        con = lite.connect('indexed_urls.db')
+        cur = con.cursor()
+        cur.execute("SELECT Url, Words, WordCount FROM URLs ORDER BY WordCount DESC LIMIT 5")
+        #print(cur.fetchall())
+        output = cur.fetchall()
+        for lines in output:
+            print lines
+
+    except lite.Error, e:
+        if con:
+            con.rollback()
+
+        print "Error %s:" % e.args[0]
+        sys.exit(1)
+
+    finally:
+        if con:
+            con.close()
+
+
+'''
+initialize the Graphical User Interface
+'''
+def init_gui():
+    root = Tk()
+    root.title("Simple Search Engine")
+    root.geometry("640x480")
+
+    app = Frame(root)
+    app.grid()
+    button1 = Button(app, text="button 1")
+    button1.grid()
+
+    label = Label(app, text=" label 1!!!")
+    label.grid()
+    root.mainloop()
+
+
+'''
+The start of the program
+'''
 seed = 'https://www.google.com'
 search_term = 'age'
-max_crawl_length = 20
+max_crawl_length = 5
 
 
+'''
+Load stop list , crawling and waiting list from file
+'''
 with open('Stop_Words.txt', 'r') as f:
     stop_list = f.readlines()
-
 
 with open('Waiting_list.txt', 'r') as f:
     waiting = pickle.load(f)
@@ -121,15 +155,14 @@ if len(waiting) > 1:
 else:
     crawled = []
 
-waiting.append(seed)
+
+init_gui()
+
+#waiting.append(seed)
 
 while len(waiting) > 0 and max_crawl_length > 0:
     crawl_next(waiting[0])
     max_crawl_length -= 1
 
-
-with open('Waiting_list.txt', 'wb') as f:
-    pickle.dump(waiting, f)
-
-with open('Crawled_list.txt', 'wb') as f:
-    pickle.dump(crawled, f)
+save_crawl_lists(crawled,waiting)
+query_database('hello')
