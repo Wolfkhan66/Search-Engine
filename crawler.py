@@ -63,15 +63,11 @@ def index_data(url , soup):
 
                         con.commit()
                     except lite.Error, e:
-
                         if con:
                             con.rollback()
-
                         print "Error %s:" % e.args[0]
                         sys.exit(1)
-
                     finally:
-
                         if con:
                             con.close()
     except:
@@ -103,11 +99,14 @@ def query_database(search_term):
     try:
         con = lite.connect('indexed_urls.db')
         cur = con.cursor()
-        cur.execute("SELECT Url, Words, WordCount FROM URLs WHERE Words=? ORDER BY WordCount DESC LIMIT 5;",(search_term,))
+        cur.execute("SELECT Url FROM URLs WHERE Words=? ORDER BY WordCount DESC LIMIT 5;",(search_term,))
         #print(cur.fetchall())
         output = cur.fetchall()
+        del console_list[:]
         for lines in output:
             print lines
+            console_list.append(lines)
+            console_list.append("")
 
         print("")
         print("###############################")
@@ -129,6 +128,36 @@ def query_database(search_term):
 initialize the Graphical User Interface
 '''
 def init_gui():
+
+    def start_query(search_term):
+        query_database(search_term)
+        console.insert(END, "###############################\n")
+        console.insert(END, "###############################\n")
+        console.insert(END, "Querying Database \n")
+        console.insert(END, "The top 5 urls for this word are: \n")
+        console.insert(END, "\n")
+
+        for i in range(0 , len(console_list)):
+            console.insert(END, console_list[i])
+            console.insert(END, '\n')
+
+        console.insert(END, "\n")
+        console.insert(END, "###############################\n")
+        console.insert(END, "###############################\n")
+
+    def start_crawl(crawl_length):
+        console.insert(END, "Starting Crawl \n")
+        search_engine.update()
+        count = int(crawl_length)
+        while len(waiting) > 0 and count > 0:
+            crawl_next(waiting[0])
+            count -= 1
+            console.insert(END, "Crawling ")
+            console.insert(END, waiting[0])
+            console.insert(END, "\n")
+            search_engine.update()
+        console.insert(END, "Crawl Finished! \n")
+
     search_engine = Tk()
     search_engine.title("Simple Search Engine")
     search_engine.geometry("640x480")
@@ -154,7 +183,7 @@ def init_gui():
     label2.grid()
 
     search_term = Entry(app)
-    search_term.insert(END, 'Hello')
+    search_term.insert(END, 'Google')
     search_term.pack()
     search_term.grid()
 
@@ -162,16 +191,11 @@ def init_gui():
     search_button.pack()
     search_button.grid()
 
+    console = Text(app)
+    console.pack()
+    console.grid()
+
     search_engine.mainloop()
-
-def start_query(search_term):
-    query_database(search_term)
-
-def start_crawl(crawl_length):
-    count = int(crawl_length)
-    while len(waiting) > 0 and count > 0:
-        crawl_next(waiting[0])
-        count -= 1
 
 
 '''
@@ -193,4 +217,7 @@ if len(waiting) > 1:
 else:
     crawled = []
 
+console_list = []
+console_list.append("Welcome to my simple Search Engine \n")
 init_gui()
+save_crawl_lists(crawled, waiting)
