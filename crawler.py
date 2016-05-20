@@ -5,6 +5,20 @@ import string
 import sqlite3 as lite
 import sys
 import pickle
+from Tkinter import *
+
+root = Tk()
+root.title("Simple Search Engine")
+root.geometry("640x480")
+
+app = Frame(root)
+app.grid()
+button1 = Button(app, text = "button 1")
+button1.grid()
+
+label = Label(app, text = " label 1!!!")
+label.grid()
+root.mainloop()
 
 con = lite.connect('indexed_urls.db')
 
