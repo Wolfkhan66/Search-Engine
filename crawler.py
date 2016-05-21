@@ -6,6 +6,7 @@ import sqlite3 as lite
 import sys
 import pickle
 from Tkinter import *
+import operator
 
 
 '''
@@ -19,7 +20,7 @@ def crawl_next(next_url):
         url = urllib2.urlopen(next_url).read()
         soup = bs4.BeautifulSoup(url, "html.parser")
         print(" crawling", next_url)
-        for link in soup.findAll('a', attrs={'href': re.compile("^https://www.")}):
+        for link in soup.findAll('a', attrs={'href': re.compile("^http")}):
             href = link.get('href')
             if href not in waiting and href not in crawled:
                 waiting.append(href)
@@ -39,14 +40,14 @@ save information to a database
 def index_data(url , soup):
     url_dict = {}
     stuff = soup.get_text()
-
+    exclude = set(string.punctuation)
+    print(stuff)
+    stuff = ''.join(ch for ch in stuff if ch not in exclude)
+    print (stuff)
     try:
         for i in stuff.split():
-            i.strip(string.punctuation + string.digits + string.whitespace)
-            if i not in stop_list and i not in url_dict and len(i) > 3:
+            if i not in url_dict and len(i) >= 3:
                 search_term = str(i)
-                search_term.strip(string.punctuation)
-
                 results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
                 print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
                 if len(results) >= 1:
@@ -56,10 +57,8 @@ def index_data(url , soup):
                         con = lite.connect('indexed_urls.db')
                         cur = con.cursor()
 
-                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Words TEXT, WordCount INT);")
-                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?);",(len(crawled), url, search_term, len(results)))
-                        cur.execute("SELECT * FROM URLs ORDER BY Id DESC LIMIT 1")
-                        print(cur.fetchall())
+                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, UrlText TEXT, Words TEXT, WordCount INT);")
+                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?);",(len(crawled), url, stuff, search_term, len(results)))
 
                         con.commit()
                     except lite.Error, e:
@@ -90,27 +89,43 @@ query the database for a term
 '''
 def query_database(search_term):
 
-    print("###############################")
-    print("###############################")
-    print("Querying Database for the word ", search_term)
-    print("The top 5 urls for this word are: ")
-    print("")
-
     try:
-        con = lite.connect('indexed_urls.db')
-        cur = con.cursor()
-        cur.execute("SELECT Url FROM URLs WHERE Words=? ORDER BY WordCount DESC LIMIT 5;",(search_term,))
-        #print(cur.fetchall())
-        output = cur.fetchall()
+        ranking_dict = {}
         del console_list[:]
-        for lines in output:
-            print lines
-            console_list.append(lines)
-            console_list.append("")
+        console_list.append("###############################")
+        console_list.append("###############################")
+        console_list.append("Querying Database for " + search_term)
 
-        print("")
-        print("###############################")
-        print("###############################")
+        for i in search_term.split():
+            con = lite.connect('indexed_urls.db')
+            cur = con.cursor()
+            cur.execute("SELECT Url FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 5;",('%'+i+'%',))
+            urls = cur.fetchall()
+            cur.execute("SELECT WordCount FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            wordcount = cur.fetchall()
+
+            if len(urls) >= 1:
+                for lines in urls:
+                    print lines
+                    if lines not in ranking_dict:
+                        ranking_dict[lines] = wordcount[urls.index(lines)]
+                    else:
+                        ranking_dict[lines] = ranking_dict[lines] + wordcount[urls.index(lines)]
+
+            else:
+                console_list.append("no results found for " + i)
+                console_list.append("")
+                console_list.append("###############################")
+                console_list.append("###############################")
+
+        for item in ranking_dict:
+            ranking_dict[item] = sum(ranking_dict[item])
+
+        sorted_x = sorted(ranking_dict.items(), key=operator.itemgetter(1))
+        sorted_x.reverse()
+        for item in sorted_x:
+            console_list.append(item)
+            console_list.append("")
 
     except lite.Error, e:
         if con:
@@ -131,21 +146,13 @@ def init_gui():
 
     def start_query(search_term):
         query_database(search_term)
-        console.insert(END, "###############################\n")
-        console.insert(END, "###############################\n")
-        console.insert(END, "Querying Database \n")
-        console.insert(END, "The top 5 urls for this word are: \n")
-        console.insert(END, "\n")
-
+        console.delete('1.0', END)
         for i in range(0 , len(console_list)):
             console.insert(END, console_list[i])
             console.insert(END, '\n')
 
-        console.insert(END, "\n")
-        console.insert(END, "###############################\n")
-        console.insert(END, "###############################\n")
-
     def start_crawl(crawl_length):
+        console.delete('1.0', END)
         console.insert(END, "Starting Crawl \n")
         search_engine.update()
         count = int(crawl_length)
@@ -200,8 +207,6 @@ def init_gui():
 
 '''
 The start of the program
-'''
-'''
 Load stop list , crawling and waiting list from file
 Launch the Gui
 '''
@@ -221,3 +226,4 @@ console_list = []
 console_list.append("Welcome to my simple Search Engine \n")
 init_gui()
 save_crawl_lists(crawled, waiting)
+sys.exit(1)
