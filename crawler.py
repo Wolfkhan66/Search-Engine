@@ -103,6 +103,8 @@ def query_database(search_term):
             urls = cur.fetchall()
             cur.execute("SELECT WordCount FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
             wordcount = cur.fetchall()
+            cur.execute("SELECT Url FROM URLs WHERE Url LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            urls_with_term = cur.fetchall()
 
             if len(urls) >= 1:
                 for lines in urls:
@@ -111,6 +113,12 @@ def query_database(search_term):
                         ranking_dict[lines] = wordcount[urls.index(lines)]
                     else:
                         ranking_dict[lines] = ranking_dict[lines] + wordcount[urls.index(lines)]
+
+            if len(urls_with_term) >= 1:
+                for lines in urls_with_term:
+                    if lines not in ranking_dict:
+                        ranking_dict[lines] = (5,)
+                    else:
 
             else:
                 console_list.append("no results found for " + i)
@@ -124,7 +132,9 @@ def query_database(search_term):
         sorted_x = sorted(ranking_dict.items(), key=operator.itemgetter(1))
         sorted_x.reverse()
         for item in sorted_x:
-            console_list.append(item)
+            temp = str(item)
+            temp.split(',')
+            console_list.append(temp)
             console_list.append("")
 
     except lite.Error, e:
