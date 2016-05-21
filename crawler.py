@@ -7,6 +7,8 @@ import sys
 import pickle
 from Tkinter import *
 import operator
+from collections import OrderedDict
+import unicodedata
 
 
 '''
@@ -40,11 +42,9 @@ save information to a database
 def index_data(url , soup):
     url_dict = {}
     stuff = soup.get_text()
-    exclude = set(string.punctuation)
-    #stuff = ''.join(ch for ch in stuff if ch not in exclude)
     for char in string.punctuation:
         stuff = stuff.replace(char," ")
-        
+
     try:
         con = lite.connect('indexed_urls.db')
         cur = con.cursor()
@@ -54,8 +54,6 @@ def index_data(url , soup):
                 # then i will be our search term
                 if i not in url_dict and i not in stop_list and len(i) >= 3 and len(i) <= 35:
                     search_term = str(i)
-                    #results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
-                    #print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
 
                     # count how many times this word appears on the page
                     word_count = stuff.count(i)
@@ -82,6 +80,8 @@ def index_data(url , soup):
     finally:
         if con:
             con.close()
+
+
 '''
 save the waiting and crawled list to file
 '''
@@ -94,6 +94,7 @@ def save_crawl_lists(crawled, waiting):
 
     with open('Stop_Words.txt', 'wb') as f:
         pickle.dump(stop_list, f)
+
 
 '''
 query the database for a term
@@ -110,13 +111,13 @@ def query_database(search_term):
         for i in search_term.split():
             con = lite.connect('indexed_urls.db')
             cur = con.cursor()
-            cur.execute("SELECT Url FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 5;",('%'+i+'%',))
+            cur.execute("SELECT Url FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 8;",('%'+i+'%',))
             urls = cur.fetchall()
-            cur.execute("SELECT WordCount FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            cur.execute("SELECT WordCount FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 8;", ('%'+i+'%',))
             wordcount = cur.fetchall()
-            cur.execute("SELECT Url FROM URLs WHERE Url LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            cur.execute("SELECT Url FROM URLs WHERE Url LIKE ? ORDER BY WordCount DESC LIMIT 8;", ('%'+i+'%',))
             urls_with_term = cur.fetchall()
-            cur.execute("SELECT Url FROM URLs WHERE Title LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            cur.execute("SELECT Url FROM URLs WHERE Title LIKE ? ORDER BY WordCount DESC LIMIT 8;", ('%'+i+'%',))
             titles_with_term = cur.fetchall()
 
             if len(urls) >= 1:
@@ -150,12 +151,15 @@ def query_database(search_term):
         for item in ranking_dict:
             ranking_dict[item] = sum(ranking_dict[item])
 
-        sorted_x = sorted(ranking_dict.items(), key=operator.itemgetter(1))
-        sorted_x.reverse()
-        for item in sorted_x:
+        ranking_dict = OrderedDict(sorted(ranking_dict.items(), key=lambda t: t[1], reverse=True))
+
+        for item in ranking_dict:
             temp = str(item)
-            temp.split(',')
-            console_list.append(temp)
+            temp = temp[:-3]
+            temp = temp[+3:]
+            #unicodedata.normalize('NFKD', str(temp)).encode('ascii', 'ignore')
+            temp2 = str(ranking_dict[item])
+            console_list.append("Rank:[ " + temp2 + " ] " + temp)
             console_list.append("")
 
     except lite.Error, e:
