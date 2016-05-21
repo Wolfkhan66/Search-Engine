@@ -24,8 +24,8 @@
       <file leaf-file-name="crawler.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/crawler.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="442">
-              <caret line="123" column="75" selection-start-line="123" selection-start-column="75" selection-end-line="123" selection-end-column="75" />
+            <state relative-caret-position="272">
+              <caret line="120" column="25" selection-start-line="120" selection-start-column="25" selection-end-line="120" selection-end-column="25" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
                 <element signature="e#272#813#0" expanded="false" />
@@ -76,8 +76,8 @@
         <option value="$PROJECT_DIR$/Stop_Words" />
         <option value="$PROJECT_DIR$/Stop_Words.txt" />
         <option value="$PROJECT_DIR$/Crawled_list.txt" />
-        <option value="$PROJECT_DIR$/crawler.py" />
         <option value="$PROJECT_DIR$/Waiting_list.txt" />
+        <option value="$PROJECT_DIR$/crawler.py" />
       </list>
     </option>
   </component>
@@ -559,8 +559,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/crawler.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="442">
-          <caret line="123" column="75" selection-start-line="123" selection-start-column="75" selection-end-line="123" selection-end-column="75" />
+        <state relative-caret-position="272">
+          <caret line="120" column="25" selection-start-line="120" selection-start-column="25" selection-end-line="120" selection-end-column="25" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
             <element signature="e#272#813#0" expanded="false" />
