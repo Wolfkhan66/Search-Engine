@@ -41,24 +41,33 @@ def index_data(url , soup):
     url_dict = {}
     stuff = soup.get_text()
     exclude = set(string.punctuation)
-    print(stuff)
-    stuff = ''.join(ch for ch in stuff if ch not in exclude)
-    print (stuff)
+    #stuff = ''.join(ch for ch in stuff if ch not in exclude)
+    for char in string.punctuation:
+        stuff = stuff.replace(char," ")
+
     try:
         for i in stuff.split():
-            if i not in url_dict and len(i) >= 3:
+            # if the word i is not already in the temporary dictionary or in the stop list and is over 3 characters long and less than 35 characters in length
+            # then i will be our search term
+            if i not in url_dict and i not in stop_list and len(i) >= 3 and len(i) <= 35:
                 search_term = str(i)
-                results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
-                print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
-                if len(results) >= 1:
-                    url_dict.update({search_term : len(results)})
+                #results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
+                #print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
+
+                # count how many times this word appears on the page
+                word_count = stuff.count(i)
+                print("found " + i + " " + str(word_count) + " times")
+                # if the word appears at least once update the temporary dictionary and open the database
+                if word_count >= 1:
+                    url_dict.update({search_term : word_count})
+                    title = soup.title.string
 
                     try:
                         con = lite.connect('indexed_urls.db')
                         cur = con.cursor()
 
-                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, UrlText TEXT, Words TEXT, WordCount INT);")
-                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?);",(len(crawled), url, stuff, search_term, len(results)))
+                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Title TEXT, UrlText TEXT, Words TEXT, WordCount INT);")
+                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?, ?);",(len(crawled), url, title, stuff, search_term, word_count))
 
                         con.commit()
                     except lite.Error, e:
@@ -83,6 +92,8 @@ def save_crawl_lists(crawled, waiting):
     with open('Crawled_list.txt', 'wb') as f:
         pickle.dump(crawled, f)
 
+    with open('Stop_Words.txt', 'wb') as f:
+        pickle.dump(stop_list, f)
 
 '''
 query the database for a term
@@ -105,6 +116,8 @@ def query_database(search_term):
             wordcount = cur.fetchall()
             cur.execute("SELECT Url FROM URLs WHERE Url LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
             urls_with_term = cur.fetchall()
+            cur.execute("SELECT Url FROM URLs WHERE Title LIKE ? ORDER BY WordCount DESC LIMIT 5;", ('%' + i + '%',))
+            titles_with_term = cur.fetchall()
 
             if len(urls) >= 1:
                 for lines in urls:
@@ -119,6 +132,14 @@ def query_database(search_term):
                     if lines not in ranking_dict:
                         ranking_dict[lines] = (5,)
                     else:
+                        ranking_dict[lines] = ranking_dict[lines] + (5,)
+
+            if len(titles_with_term) >= 1:
+                for lines in urls_with_term:
+                    if lines not in ranking_dict:
+                        ranking_dict[lines] = (5,)
+                    else:
+                        ranking_dict[lines] = ranking_dict[lines] + (5,)
 
             else:
                 console_list.append("no results found for " + i)
@@ -221,7 +242,7 @@ Load stop list , crawling and waiting list from file
 Launch the Gui
 '''
 with open('Stop_Words.txt', 'r') as f:
-    stop_list = f.readlines()
+    stop_list = pickle.load(f)
 
 with open('Waiting_list.txt', 'r') as f:
     waiting = pickle.load(f)
@@ -232,8 +253,11 @@ if len(waiting) > 1:
 else:
     crawled = []
 
+print(stop_list)
 console_list = []
 console_list.append("Welcome to my simple Search Engine \n")
 init_gui()
 save_crawl_lists(crawled, waiting)
+
+
 sys.exit(1)
