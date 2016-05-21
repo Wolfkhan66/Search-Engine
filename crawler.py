@@ -44,44 +44,44 @@ def index_data(url , soup):
     #stuff = ''.join(ch for ch in stuff if ch not in exclude)
     for char in string.punctuation:
         stuff = stuff.replace(char," ")
-
+        
     try:
-        for i in stuff.split():
-            # if the word i is not already in the temporary dictionary or in the stop list and is over 3 characters long and less than 35 characters in length
-            # then i will be our search term
-            if i not in url_dict and i not in stop_list and len(i) >= 3 and len(i) <= 35:
-                search_term = str(i)
-                #results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
-                #print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
+        con = lite.connect('indexed_urls.db')
+        cur = con.cursor()
+        try:
+            for i in stuff.split():
+                # if the word i is not already in the temporary dictionary or in the stop list and is over 3 characters long and less than 35 characters in length
+                # then i will be our search term
+                if i not in url_dict and i not in stop_list and len(i) >= 3 and len(i) <= 35:
+                    search_term = str(i)
+                    #results = soup.find_all(string=re.compile('.*{0}.*'.format(search_term)), recursive=True)
+                    #print 'Found the word "{0}" {1} times\n'.format(search_term, len(results))
 
-                # count how many times this word appears on the page
-                word_count = stuff.count(i)
-                print("found " + i + " " + str(word_count) + " times")
-                # if the word appears at least once update the temporary dictionary and open the database
-                if word_count >= 1:
-                    url_dict.update({search_term : word_count})
-                    title = soup.title.string
+                    # count how many times this word appears on the page
+                    word_count = stuff.count(i)
+                    print("found " + i + " " + str(word_count) + " times")
+                    # if the word appears at least once update the temporary dictionary and open the database
+                    if word_count >= 1:
+                        url_dict.update({search_term : word_count})
+                        title = soup.title.string
 
-                    try:
-                        con = lite.connect('indexed_urls.db')
-                        cur = con.cursor()
-
-                        cur.execute("CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Title TEXT, UrlText TEXT, Words TEXT, WordCount INT);")
-                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?, ?);",(len(crawled), url, title, stuff, search_term, word_count))
+                        cur.execute(
+                            "CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Title TEXT, UrlText TEXT, Words TEXT, WordCount INT);")
+                        cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?, ?);",
+                                    (len(crawled), url, title, stuff, search_term, word_count))
 
                         con.commit()
-                    except lite.Error, e:
-                        if con:
-                            con.rollback()
-                        print "Error %s:" % e.args[0]
-                        sys.exit(1)
-                    finally:
-                        if con:
-                            con.close()
-    except:
-        print ("error")
+        except:
+            print ("error")
 
-
+    except lite.Error, e:
+        if con:
+            con.rollback()
+        print "Error %s:" % e.args[0]
+        sys.exit(1)
+    finally:
+        if con:
+            con.close()
 '''
 save the waiting and crawled list to file
 '''
