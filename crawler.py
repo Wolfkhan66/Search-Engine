@@ -10,7 +10,6 @@ from collections import OrderedDict
 initialize the Graphical User Interface
 '''
 def init_gui():
-
     '''
     Pass in a url
     Create a connection
@@ -174,6 +173,7 @@ def init_gui():
             search_engine.update()
             crawl_next(waiting[0])
             count -= 1
+        console.delete('1.0', END)
         console.insert(END, "Crawl Finished! \n")
         console.insert(END, str(len(crawled)) + " Websites have been Indexed\n")
         console.insert(END, str(len(waiting)) + " Websites are waiting to be Crawled\n")
