@@ -7,7 +7,7 @@ from Tkinter import *
 from collections import OrderedDict
 
 '''
-initialize the Graphical User Interface
+initialize the Graphical User Interface and the main loop
 '''
 def init_gui():
     '''
@@ -18,16 +18,27 @@ def init_gui():
     '''
     def crawl_next(next_url):
         try:
+            # open a connection to the next url
             url = urllib2.urlopen(next_url).read()
+            # parse the html using beatuifulsoup
             soup = bs4.BeautifulSoup(url, "html.parser")
+            #print out the url being crawled
             print(" crawling", next_url)
+
+            # using beautiful soup, find all of the links in the html, as long as they contain http
             for link in soup.findAll('a', attrs={'href': re.compile("^http")}):
                 href = link.get('href')
+                # if the link found is not already in the waiting or crawled list, add it to the waiting list
                 if href not in waiting and href not in crawled:
                     waiting.append(href)
+
+            # now we are done searching for urls, add the url to the crawled list, and remove it from the waiting list
             crawled.append(next_url)
             waiting.remove(next_url)
+
+            #update the gui for good measure
             search_engine.update()
+            #now the page has been crawled for urls, pass the html to the indexer
             index_data(next_url, soup)
         except:
             # print("error with url",  next_url)
@@ -40,15 +51,20 @@ def init_gui():
     save information to a database
     '''
     def index_data(url, soup):
+        # create a temporary dict to store data for a url
         url_dict = {}
+        # get just the text from the parsed html
         stuff = soup.get_text()
+        # replace all punctuation in the text with a space
         for char in string.punctuation:
             stuff = stuff.replace(char," ")
 
         try:
+            # now we are ready to index , open up the database
             con = lite.connect('indexed_urls.db')
             cur = con.cursor()
             try:
+                # split the text up by the spaces in the text, so to individual words
                 for i in stuff.split():
                     search_engine.update()
                     # if the word i is not already in the temporary dictionary or in the stop list and is over 3 characters long and less than 35 characters in length
@@ -59,7 +75,7 @@ def init_gui():
                         # count how many times this word appears on the page
                         word_count = stuff.count(i)
                         stuff = stuff.replace(i ,'')
-                        # if the word appears more than once update the temporary dictionary and open the database
+                        # if the word appears more than once update the temporary dictionary and index data to the database
                         if word_count >= 2:
                             print("found " + i + " " + str(word_count) + " times")
                             url_dict.update({search_term : word_count})
@@ -67,9 +83,7 @@ def init_gui():
 
                             cur.execute(
                                 "CREATE TABLE IF NOT EXISTS URLs(Id INTEGER PRIMARY KEY, UrlNumber INT, Url TEXT, Title TEXT, Words TEXT, WordCount INT);")
-                            cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?);",
-                                        (len(crawled), url, title, search_term, word_count))
-
+                            cur.execute("INSERT INTO URLs VALUES (NULL, ?, ?, ?, ?, ?);",(len(crawled), url, title, search_term, word_count))
                             con.commit()
             except:
                 print ("error")
@@ -90,19 +104,35 @@ def init_gui():
     def query_database(search_term):
 
         try:
+            # create temporary dictionary to rank the output from the database queries
             ranking_dict = {}
+            # split our search term up if multiple words have been entered, so we can query the database for each word
             for i in search_term.split():
+                # update the gui for good measure
                 search_engine.update()
+                # open the database
                 con = lite.connect('indexed_urls.db')
                 cur = con.cursor()
+
+                # select all urls where the words indexed are like our searchtime, and order them by the word count
                 cur.execute("SELECT Url FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 6;",('%'+i+'%',))
                 urls = cur.fetchall()
+
+                # select the wordcounts for the same query as above
                 cur.execute("SELECT WordCount FROM URLs WHERE Words LIKE ? ORDER BY WordCount DESC LIMIT 6;", ('%'+i+'%',))
                 wordcount = cur.fetchall()
+
+                # select urls where the search term appears in the url
                 cur.execute("SELECT Url FROM URLs WHERE Url LIKE ? ORDER BY WordCount DESC LIMIT 6;", ('%'+i+'%',))
                 urls_with_term = cur.fetchall()
+
+                # select urls where the search term appears in the title
                 cur.execute("SELECT Url FROM URLs WHERE Title LIKE ? ORDER BY WordCount DESC LIMIT 6;", ('%'+i+'%',))
                 titles_with_term = cur.fetchall()
+
+                # Here we do our ranking, the ranking dict contains all the urls found for the above queries.
+                # a Url gains a point each time a word from the search term is found on its page
+                # 5 additional points are gained if the search term is found in the url and or in the title
 
                 if len(urls) >= 1:
                     for lines in urls:
@@ -128,10 +158,14 @@ def init_gui():
                     console.insert(END,"no results found for " + i + "\n")
                     console.insert(END,"\n")
 
+            # for each item in the ranking dict, convert the wordcount tuples to an int
             for item in ranking_dict:
                 ranking_dict[item] = sum(ranking_dict[item])
+
+            # sort the rank dictionary into descending order
             ranking_dict = OrderedDict(sorted(ranking_dict.items(), key=lambda t: t[1], reverse=True))
 
+            # format entries in the ranking dict into strings to be displayed on the gui terminal
             for item in ranking_dict:
                 temp = str(item)
                 temp = temp[:-3]
@@ -153,6 +187,7 @@ def init_gui():
 
 
     def start_query(search_term):
+        # binds to the search button and fires off a query
         console.delete('1.0', END)
         console.insert(END,"###############################\n")
         console.insert(END,"###############################\n")
@@ -162,10 +197,15 @@ def init_gui():
 
 
     def start_crawl(crawl_length):
+        # binds to the start crawl button and fires off the crawler and indexer
         console.delete('1.0', END)
         console.insert(END, "Starting Crawl \n")
         search_engine.update()
+
+        # count = the max pages to crawl entered by the user
         count = int(crawl_length)
+        # while there are pages waiting to be crawled and we havent reached the max pages to crawl
+        # crawl the next page in the list
         while len(waiting) > 0 and count > 0:
             console.insert(END, "Crawling ")
             console.insert(END, waiting[0])
@@ -179,6 +219,7 @@ def init_gui():
         console.insert(END, str(len(waiting)) + " Websites are waiting to be Crawled\n")
 
 
+    # the following is the GUI using Tkinter
     search_engine = Tk()
     search_engine.title("Simple Search Engine")
     search_engine.geometry("640x480")
@@ -224,7 +265,7 @@ def init_gui():
 
 
 '''
-save the waiting and crawled list to file
+save the waiting, crawled and stop list to file
 '''
 def save_crawl_lists(crawled, waiting):
     with open('Waiting_list.txt', 'wb') as f:
@@ -240,7 +281,9 @@ def save_crawl_lists(crawled, waiting):
 '''
 The start of the program
 Load stop list , crawling and waiting list from file
-Launch the Gui
+Launch the Gui thread
+When Gui is closed - save the crawled and waiting lists
+Then exit the system
 '''
 with open('Stop_Words.txt', 'r') as f:
     stop_list = pickle.load(f)
@@ -254,9 +297,6 @@ if len(waiting) > 1:
 else:
     crawled = []
 
-print(stop_list)
 init_gui()
 save_crawl_lists(crawled, waiting)
-
-
 sys.exit(1)
